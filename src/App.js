@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import wordList from './resources/words.json';
 
 const MAX_TYPED_KEYS = 30;
@@ -24,11 +24,13 @@ const Word = ({word, validKeys}) =>{
 	
 	const matched = word.slice(0, joinedKeys.length);
 	
-	const remainder = word.slice(joinedKeys.length)
+	const remainder = word.slice(joinedKeys.length);
+	
+	const matchedClass = (joinedKeys === word) ? 'matched completed' : 'matched';
 	
 	return (
 		<>
-			<span className="matched">{matched}</span>
+			<span className={matchedClass}>{matched}</span>
 			<span className="remainder">{remainder}</span>
 		</>
 	)
@@ -41,26 +43,39 @@ function App() {
 	
 	const [word, setWord] = useState('');
 	
+	const containerRef = useRef(null);
+	
 	useEffect(() => {
 		setWord(getWord());
+		
+		if(containerRef) containerRef.current.focus()
 	}, []);
 	
 	useEffect(() =>{
 		const wordFromValidKeys = validKeys.join('').toLowerCase();
+		
+		let timeout = null;
+		
 		if(word && word === wordFromValidKeys){
 			
-			let newWord = null;
+			timeout = setTimeout(() =>{
+				let newWord = null;
+				
+				do {
+					newWord = getWord();
+				}while(completedWords.includes(newWord));
+				
+				setWord(newWord);
+				
+				setValidKeys([]);
+				
+				setCompletedWords((prev) => [...prev, word]);
+			}, 200);
 			
-			do {
-				newWord = getWord();
-			}while(completedWords.includes(newWord));
-			
-			setWord(newWord);
-			
-			setValidKeys([]);
-			
-			setCompletedWords((prev) => [...prev, word]);
-			
+		}
+		
+		return () =>{
+			if(timeout) clearTimeout(timeout);
 		}
 		
 	}, [word, validKeys, completedWords]);
@@ -78,17 +93,13 @@ function App() {
 				
 				const isNextChar = isValidLength && word[prev.length] === key;
 				
-				/*console.log('prev', prev, prev.length);
-				console.log('word', word);
-				console.log('isNextChar', isNextChar, key);*/
-				
 				return isNextChar ? [...prev, key] : prev;
 			})
 		}
 	}
 	
   return (
-    <div className="container" tabIndex="0" onKeyDown={handleKeyDown}>
+    <div className="container" tabIndex="0" onKeyDown={handleKeyDown} ref={containerRef}>
       <div className="valid-keys">
 		<Word word={word} validKeys={validKeys} />
 	  </div>
